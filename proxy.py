@@ -39,7 +39,15 @@ class ProxyFactory(http.HTTPFactory):
         log.msg('loading ad rules')
         groups = []
         for line in file('easylist.txt'):
-            groups.append(re.escape(line.strip()).replace(r'\*', '.*'))
+            if '!' in line or '||' in line or '#' in line:
+                continue
+            line = line.strip()
+            line = re.escape(line)
+            if line[0:1] == r'\|':
+                line = '^%s' % line[2:]
+            if line[-2:] == '\|':
+                line = '%s$' % line[:-2]
+            groups.append(line)
         global blacklist
         blacklist = re.compile('|'.join(groups), re.I)
         log.msg('%i rules loaded' % len(groups))
