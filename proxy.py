@@ -11,7 +11,6 @@ import base64
 log.startLogging(sys.stdout)
 
 blacklist = None
-authed = False
 
 
 class BlockingProxyRequest(proxy.ProxyRequest):
