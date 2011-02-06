@@ -4,15 +4,39 @@ from twisted.python import log
 
 import sys
 import re
+import base64
 
 log.startLogging(sys.stdout)
 
 blacklist = None
+authed = False
 
 
 class BlockingProxyRequest(proxy.ProxyRequest):
+    def get_user(self):
+        hs = self.received_headers
+        try:
+            auth = hs['proxy-authorization']
+            decoded = base64.decodestring(auth.rsplit(' ', 1)[-1])
+            return decoded.rsplit(':', 1)[0]
+        except KeyError:
+            return None
+
     def process(self):
+        user = self.get_user()
+        if not user:
+            for line in ('HTTP/1.1 407 Proxy Authentication Required\r\n',
+                         'Proxy-Authenticate: basic realm="torquemada"\r\n',
+                         'Content-Type: text/html\r\n',
+                         '\r\n',
+                         'Unauthorized.\r\n'):
+                print line
+            self.transport.loseConnection()
+            return
+
+        log.msg('user: %s' % user)
         log.msg('%s %s' % (self.uri, blacklist.search(self.uri)))
+
         if blacklist.search(self.uri):
             print "Blocked:", self.uri
             self.transport.write("HTTP/1.0 200 OK\r\n")
